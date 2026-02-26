@@ -1,3 +1,5 @@
+using TradeFlow.Common.Domain;
+
 namespace TradeFlow.Identity.Domain.Entities;
 
 public class User
@@ -8,7 +10,7 @@ public class User
     public string? PasswordHash { get; private set; }
     public string? GoogleId { get; private set; }
     public string? AvatarUrl { get; private set; }
-    public string Role { get; private set; } = "Trader";
+    public string Role { get; private set; } = Common.Domain.Role.Trader;
     public bool IsActive { get; private set; } = true;
     public string? RefreshToken { get; private set; }
     public DateTime? RefreshTokenExpiryTime { get; private set; }
@@ -16,29 +18,39 @@ public class User
     public DateTime? UpdatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
 
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     private User() { } // EF Core
 
     public static User Create(string email, string displayName, string passwordHash, string role = "Trader")
     {
-        return new User
+        var validRole = Common.Domain.Role.From(role);
+        var user = new User
         {
             Email = email.ToLowerInvariant(),
             DisplayName = displayName,
             PasswordHash = passwordHash,
-            Role = role
+            Role = validRole
         };
+        user.AddDomainEvent(new UserCreatedEvent(user.Id, user.Email, user.DisplayName));
+        return user;
     }
 
     public static User CreateFromGoogle(string email, string displayName, string googleId, string? avatarUrl)
     {
-        return new User
+        var user = new User
         {
             Email = email.ToLowerInvariant(),
             DisplayName = displayName,
             GoogleId = googleId,
             AvatarUrl = avatarUrl,
-            Role = "Trader"
+            Role = Common.Domain.Role.Trader
         };
+        user.AddDomainEvent(new UserCreatedEvent(user.Id, user.Email, user.DisplayName));
+        return user;
     }
 
     public void UpdateRefreshToken(string refreshToken, DateTime expiryTime)
@@ -70,7 +82,8 @@ public class User
 
     public void ChangeRole(string role)
     {
-        Role = role;
+        var validRole = Common.Domain.Role.From(role);
+        Role = validRole;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -78,6 +91,7 @@ public class User
     {
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
+        AddDomainEvent(new UserDeactivatedEvent(Id, Email));
     }
 
     public void Activate()
@@ -89,3 +103,7 @@ public class User
     public bool HasValidRefreshToken() =>
         RefreshToken != null && RefreshTokenExpiryTime > DateTime.UtcNow;
 }
+
+// Domain Events
+public sealed record UserCreatedEvent(Guid UserId, string Email, string DisplayName) : DomainEvent;
+public sealed record UserDeactivatedEvent(Guid UserId, string Email) : DomainEvent;

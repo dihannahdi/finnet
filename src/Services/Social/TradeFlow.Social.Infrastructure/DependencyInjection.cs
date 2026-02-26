@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TradeFlow.Common.Domain;
 using TradeFlow.Social.Domain.Interfaces;
 using TradeFlow.Social.Infrastructure.Persistence;
 
@@ -17,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<ITradeIdeaRepository, TradeIdeaRepository>();
         services.AddScoped<IFollowRepository, FollowRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;
     }

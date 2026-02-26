@@ -5,6 +5,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TradeFlow.Portfolio.Application\TradeFlow.Portfolio.Application.csproj" />
     <ProjectReference Include="..\TradeFlow.Portfolio.Domain\TradeFlow.Portfolio.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.Common\TradeFlow.Common.csproj" />
     <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.MessageContracts\TradeFlow.MessageContracts.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -12,5 +13,6 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.11" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.2.5" />
   </ItemGroup>
 </Project>

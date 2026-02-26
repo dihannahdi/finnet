@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using TradeFlow.Portfolio.Domain.Entities;
 
@@ -13,6 +14,11 @@ public class PortfolioDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // MassTransit Outbox tables
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
         modelBuilder.Entity<UserPortfolio>(entity =>
         {
             entity.ToTable("Portfolios");

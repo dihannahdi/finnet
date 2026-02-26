@@ -17,6 +17,16 @@ public class PortfolioAggregateTests
     }
 
     [Fact]
+    public void Create_ShouldSetUserId()
+    {
+        var userId = Guid.NewGuid();
+        var portfolio = UserPortfolio.Create(userId);
+
+        portfolio.UserId.Should().Be(userId);
+        portfolio.Id.Should().NotBeEmpty();
+    }
+
+    [Fact]
     public void ExecuteBuy_ShouldCreatePosition_WhenSufficientCash()
     {
         var portfolio = UserPortfolio.Create(Guid.NewGuid());
@@ -42,6 +52,24 @@ public class PortfolioAggregateTests
     }
 
     [Fact]
+    public void ExecuteBuy_ShouldThrow_WhenExactlyOverBalance()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        var act = () => portfolio.ExecuteBuy("AAPL", 1m, 100_001m);
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void ExecuteBuy_ShouldSucceed_WhenExactBalance()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        var trade = portfolio.ExecuteBuy("AAPL", 1000m, 100m);
+
+        portfolio.CashBalance.Should().Be(0m);
+        trade.Should().NotBeNull();
+    }
+
+    [Fact]
     public void ExecuteBuy_ShouldAddToExistingPosition()
     {
         var portfolio = UserPortfolio.Create(Guid.NewGuid());
@@ -54,6 +82,27 @@ public class PortfolioAggregateTests
     }
 
     [Fact]
+    public void ExecuteBuy_MultipleSymbols_ShouldCreateSeparatePositions()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("AAPL", 10m, 150m);
+        portfolio.ExecuteBuy("GOOGL", 5m, 200m);
+
+        portfolio.Positions.Should().HaveCount(2);
+        portfolio.Trades.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ExecuteBuy_ShouldNormalizeSymbolToUpperCase()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("aapl", 10m, 150m);
+
+        portfolio.Positions.First().Symbol.Should().Be("AAPL");
+        portfolio.Trades.First().Symbol.Should().Be("AAPL");
+    }
+
+    [Fact]
     public void ExecuteSell_ShouldReducePosition()
     {
         var portfolio = UserPortfolio.Create(Guid.NewGuid());
@@ -63,6 +112,17 @@ public class PortfolioAggregateTests
         portfolio.Positions.First().Quantity.Should().Be(5m);
         portfolio.CashBalance.Should().Be(99_300m); // 100k - 1500 + 800
         portfolio.Trades.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ExecuteSell_AllShares_ShouldRemovePosition()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("AAPL", 10m, 150m);
+        portfolio.ExecuteSell("AAPL", 10m, 160m);
+
+        portfolio.Positions.Should().BeEmpty();
+        portfolio.CashBalance.Should().Be(100_100m);
     }
 
     [Fact]
@@ -94,11 +154,60 @@ public class PortfolioAggregateTests
         var portfolio = UserPortfolio.Create(Guid.NewGuid());
         portfolio.ExecuteBuy("AAPL", 10m, 150.00m);
 
-        // Total value = cash + position value at current price
-        // CashBalance = 100000 - 1500 = 98500
-        // Position value at $160 = 10 * 160 = 1600
-        // Total = 98500 + 1600 = 100100
         var totalValue = portfolio.GetTotalValue(symbol => 160m);
         totalValue.Should().Be(100_100m);
+    }
+
+    [Fact]
+    public void GetTotalValue_WithMultiplePositions_ShouldSumAll()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("AAPL", 10m, 150m);
+        portfolio.ExecuteBuy("GOOGL", 5m, 200m);
+
+        var totalValue = portfolio.GetTotalValue(sym => sym == "AAPL" ? 160m : 210m);
+        totalValue.Should().Be(100_150m);
+    }
+
+    [Fact]
+    public void GetTotalPnL_ShouldCalculateProfit()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("AAPL", 10m, 150m);
+
+        var pnl = portfolio.GetTotalPnL(_ => 160m);
+        pnl.Should().Be(100m);
+    }
+
+    [Fact]
+    public void GetTotalPnL_ShouldCalculateLoss()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("AAPL", 10m, 150m);
+
+        var pnl = portfolio.GetTotalPnL(_ => 140m);
+        pnl.Should().Be(-100m);
+    }
+
+    [Fact]
+    public void Trade_Create_ShouldSetCorrectTotalValue()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        var trade = portfolio.ExecuteBuy("AAPL", 10m, 150m);
+
+        trade.TotalValue.Should().Be(1500m);
+        trade.Side.Should().Be("Buy");
+    }
+
+    [Fact]
+    public void Position_AveragePrice_ShouldCalculateWeightedAverage()
+    {
+        var portfolio = UserPortfolio.Create(Guid.NewGuid());
+        portfolio.ExecuteBuy("AAPL", 10m, 100m);
+        portfolio.ExecuteBuy("AAPL", 30m, 200m);
+
+        var position = portfolio.Positions.First();
+        position.AveragePrice.Should().Be(175m);
+        position.Quantity.Should().Be(40m);
     }
 }

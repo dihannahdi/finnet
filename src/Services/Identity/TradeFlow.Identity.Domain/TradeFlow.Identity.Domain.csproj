@@ -2,4 +2,7 @@
   <PropertyGroup>
     <RootNamespace>TradeFlow.Identity.Domain</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.Common\TradeFlow.Common.csproj" />
+  </ItemGroup>
 </Project>

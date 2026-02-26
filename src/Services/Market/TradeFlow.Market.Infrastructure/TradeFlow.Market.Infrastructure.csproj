@@ -5,6 +5,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TradeFlow.Market.Application\TradeFlow.Market.Application.csproj" />
     <ProjectReference Include="..\TradeFlow.Market.Domain\TradeFlow.Market.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.Common\TradeFlow.Common.csproj" />
     <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.MessageContracts\TradeFlow.MessageContracts.csproj" />
   </ItemGroup>
   <ItemGroup>

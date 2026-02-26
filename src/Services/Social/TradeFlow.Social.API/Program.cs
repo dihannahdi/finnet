@@ -11,6 +11,7 @@ using TradeFlow.Social.Application.Commands;
 using TradeFlow.Social.Infrastructure;
 using TradeFlow.Social.Infrastructure.Consumers;
 using TradeFlow.Social.Infrastructure.Hubs;
+using TradeFlow.Social.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,14 @@ builder.Services.AddSocialInfrastructure(builder.Configuration);
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<TradeExecutedConsumer>();
+
+    // Transactional Outbox Pattern — ensures DB + message publish atomicity
+    x.AddEntityFrameworkOutbox<SocialDbContext>(o =>
+    {
+        o.UsePostgres();
+        o.UseBusOutbox();
+    });
+
     x.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>

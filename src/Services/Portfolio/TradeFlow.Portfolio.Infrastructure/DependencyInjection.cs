@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TradeFlow.Common.Domain;
 using TradeFlow.Portfolio.Domain.Interfaces;
 using TradeFlow.Portfolio.Infrastructure.Persistence;
 
@@ -15,6 +16,7 @@ public static class DependencyInjection
                 "Host=localhost;Port=5432;Database=tradeflow_portfolio;Username=postgres;Password=postgres"));
 
         services.AddScoped<IPortfolioRepository, PortfolioRepository>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;
     }

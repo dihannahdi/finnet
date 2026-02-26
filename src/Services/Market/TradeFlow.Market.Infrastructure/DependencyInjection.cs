@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TradeFlow.Common.Domain;
 using TradeFlow.Market.Domain.Interfaces;
 using TradeFlow.Market.Infrastructure.Cache;
 using TradeFlow.Market.Infrastructure.Persistence;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         });
 
         services.AddHostedService<FinnhubWebSocketService>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;
     }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TradeFlow.Common.Domain;
 using TradeFlow.Identity.Domain.Interfaces;
 using TradeFlow.Identity.Infrastructure.Persistence;
 using TradeFlow.Identity.Infrastructure.Services;
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddHttpClient();
 
         return services;

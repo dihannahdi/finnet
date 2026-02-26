@@ -1,6 +1,8 @@
 # TradeFlow — Production-Grade Trading Portfolio Platform
 
 [![Build & Test](https://github.com/dihannahdi/finnet/actions/workflows/ci-cd.yml/badge.svg?branch=main)](https://github.com/dihannahdi/finnet/actions/workflows/ci-cd.yml)
+![Tests](https://img.shields.io/badge/tests-93%20passed-brightgreen)
+![.NET](https://img.shields.io/badge/.NET-8.0-purple)
 
 A **production-grade trading portfolio platform** built with **.NET 8 microservices**, designed for demo and showcase purposes. Features real-time market data, portfolio management, social trading, and a unified API gateway.
 
@@ -28,7 +30,7 @@ A **production-grade trading portfolio platform** built with **.NET 8 microservi
 |---|---|
 | Framework | .NET 8 / ASP.NET Core |
 | Architecture | Clean Architecture, CQRS |
-| Messaging | MassTransit + RabbitMQ |
+| Messaging | MassTransit + RabbitMQ (Transactional Outbox) |
 | Mediator | MediatR 12.x |
 | Database | PostgreSQL + EF Core 8 |
 | Caching | Redis (IDistributedCache) |
@@ -83,7 +85,7 @@ A **production-grade trading portfolio platform** built with **.NET 8 microservi
 ### Run with Docker Compose
 ```bash
 git clone https://github.com/dihannahdi/finnet.git
-cd finnet/TradeFlow
+cd finnet
 docker-compose up --build
 ```
 
@@ -127,6 +129,31 @@ dotnet run --project src/Gateway/TradeFlow.Gateway
 ```bash
 dotnet test --verbosity normal
 ```
+
+**93 unit tests** across 4 test projects covering:
+- Domain entity behavior & edge cases (boundary conditions, validation)
+- CQRS command handlers with mocked repositories & message bus
+- Value Object correctness (Role, DateTimeProvider)
+- Domain event raising & dispatching
+- Cache/fallback patterns for market data
+
+| Test Project | Tests | Coverage Focus |
+|---|---|---|
+| Identity.Tests | 36 | User entity, Role VO, domain events, auth flows |
+| Portfolio.Tests | 26 | Portfolio aggregate, trade execution, command handler |
+| Social.Tests | 17 | Trade ideas, likes, comments, follow/notification |
+| Market.Tests | 14 | Market queries, cache strategy, watchlist |
+
+## 📐 Architecture Decision Records
+
+Key architectural decisions are documented in [`docs/adr/`](docs/adr/):
+
+| ADR | Decision |
+|---|---|
+| [001](docs/adr/001-why-rabbitmq-over-kafka.md) | RabbitMQ over Kafka for event messaging |
+| [002](docs/adr/002-why-yarp-over-ocelot.md) | YARP over Ocelot for API Gateway |
+| [003](docs/adr/003-why-outbox-pattern.md) | Transactional Outbox for reliable messaging |
+| [004](docs/adr/004-clean-architecture-cqrs.md) | Clean Architecture with CQRS per service |
 
 ## 📁 Project Structure
 ```

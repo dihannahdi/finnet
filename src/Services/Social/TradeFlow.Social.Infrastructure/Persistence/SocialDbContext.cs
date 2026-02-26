@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using TradeFlow.Social.Domain.Entities;
 
@@ -15,6 +16,11 @@ public class SocialDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // MassTransit Outbox tables
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
         modelBuilder.Entity<TradeIdea>(entity =>
         {
             entity.ToTable("TradeIdeas");

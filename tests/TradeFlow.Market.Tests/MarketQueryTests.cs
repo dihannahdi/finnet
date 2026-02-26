@@ -9,64 +9,74 @@ namespace TradeFlow.Market.Tests;
 
 public class MarketQueryTests
 {
+    private readonly Mock<IMarketDataCache> _cache = new();
+    private readonly Mock<IMarketPriceRepository> _repo = new();
+
+    private GetMarketPriceQueryHandler CreateHandler() => new(_cache.Object, _repo.Object);
+
     [Fact]
     public async Task GetMarketPrice_ShouldReturnCachedPrice_WhenAvailable()
     {
-        // Arrange
-        var cache = new Mock<IMarketDataCache>();
-        var repo = new Mock<IMarketPriceRepository>();
-        cache.Setup(x => x.GetPriceAsync("AAPL"))
+        _cache.Setup(x => x.GetPriceAsync("AAPL"))
             .ReturnsAsync(MarketPrice.Create("AAPL", "Apple Inc.", "Stock", 150m));
 
-        var handler = new GetMarketPriceQueryHandler(cache.Object, repo.Object);
+        var result = await CreateHandler().Handle(new GetMarketPriceQuery { Symbol = "AAPL" }, CancellationToken.None);
 
-        // Act
-        var result = await handler.Handle(new GetMarketPriceQuery { Symbol = "AAPL" }, CancellationToken.None);
-
-        // Assert
         result.IsSuccess.Should().BeTrue();
-        repo.Verify(x => x.GetBySymbolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        result.Value!.CurrentPrice.Should().Be(150m);
+        _repo.Verify(x => x.GetBySymbolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task GetMarketPrice_ShouldFallbackToDb_WhenCacheMiss()
     {
-        // Arrange
-        var cache = new Mock<IMarketDataCache>();
-        var repo = new Mock<IMarketPriceRepository>();
-        cache.Setup(x => x.GetPriceAsync("AAPL"))
+        _cache.Setup(x => x.GetPriceAsync("AAPL"))
             .ReturnsAsync((MarketPrice?)null);
-        repo.Setup(x => x.GetBySymbolAsync("AAPL", It.IsAny<CancellationToken>()))
+        _repo.Setup(x => x.GetBySymbolAsync("AAPL", It.IsAny<CancellationToken>()))
             .ReturnsAsync(MarketPrice.Create("AAPL", "Apple Inc.", "Stock", 150m));
 
-        var handler = new GetMarketPriceQueryHandler(cache.Object, repo.Object);
+        var result = await CreateHandler().Handle(new GetMarketPriceQuery { Symbol = "AAPL" }, CancellationToken.None);
 
-        // Act
-        var result = await handler.Handle(new GetMarketPriceQuery { Symbol = "AAPL" }, CancellationToken.None);
-
-        // Assert
         result.IsSuccess.Should().BeTrue();
-        repo.Verify(x => x.GetBySymbolAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        _repo.Verify(x => x.GetBySymbolAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMarketPrice_ShouldReturnNotFound_WhenNoData()
     {
-        // Arrange
-        var cache = new Mock<IMarketDataCache>();
-        var repo = new Mock<IMarketPriceRepository>();
-        cache.Setup(x => x.GetPriceAsync("XYZ"))
+        _cache.Setup(x => x.GetPriceAsync("XYZ"))
             .ReturnsAsync((MarketPrice?)null);
-        repo.Setup(x => x.GetBySymbolAsync("XYZ", It.IsAny<CancellationToken>()))
+        _repo.Setup(x => x.GetBySymbolAsync("XYZ", It.IsAny<CancellationToken>()))
             .ReturnsAsync((MarketPrice?)null);
 
-        var handler = new GetMarketPriceQueryHandler(cache.Object, repo.Object);
+        var result = await CreateHandler().Handle(new GetMarketPriceQuery { Symbol = "XYZ" }, CancellationToken.None);
 
-        // Act
-        var result = await handler.Handle(new GetMarketPriceQuery { Symbol = "XYZ" }, CancellationToken.None);
-
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("not found");
+    }
+
+    [Fact]
+    public void MarketPrice_Create_ShouldSetProperties()
+    {
+        var price = MarketPrice.Create("AAPL", "Apple Inc.", "Stock", 150.50m);
+
+        price.Symbol.Should().Be("AAPL");
+        price.Name.Should().Be("Apple Inc.");
+        price.AssetType.Should().Be("Stock");
+        price.CurrentPrice.Should().Be(150.50m);
+    }
+
+    [Fact]
+    public async Task GetMarketPrice_ShouldCacheDbResult_WhenCacheMiss()
+    {
+        _cache.Setup(x => x.GetPriceAsync("AAPL"))
+            .ReturnsAsync((MarketPrice?)null);
+        _repo.Setup(x => x.GetBySymbolAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(MarketPrice.Create("AAPL", "Apple Inc.", "Stock", 150m));
+
+        var result = await CreateHandler().Handle(new GetMarketPriceQuery { Symbol = "AAPL" }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _cache.Verify(x => x.SetPriceAsync(It.IsAny<MarketPrice>(), It.IsAny<TimeSpan?>()), Times.AtMostOnce());
     }
 }

@@ -10,6 +10,7 @@ using TradeFlow.Common.Application.Behaviors;
 using TradeFlow.Portfolio.Application.Commands;
 using TradeFlow.Portfolio.Infrastructure;
 using TradeFlow.Portfolio.Infrastructure.Consumers;
+using TradeFlow.Portfolio.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,14 @@ builder.Services.AddPortfolioInfrastructure(builder.Configuration);
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<MarketPriceUpdatedConsumer>();
+
+    // Transactional Outbox Pattern — ensures DB + message publish atomicity
+    x.AddEntityFrameworkOutbox<PortfolioDbContext>(o =>
+    {
+        o.UsePostgres();
+        o.UseBusOutbox();
+    });
+
     x.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>
