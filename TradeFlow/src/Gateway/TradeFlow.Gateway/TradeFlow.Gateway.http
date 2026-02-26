@@ -1,0 +1,6 @@
+@TradeFlow.Gateway_HostAddress = http://localhost:5185
+
+GET {{TradeFlow.Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

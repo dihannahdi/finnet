@@ -1,0 +1,214 @@
+version: '3.8'
+
+services:
+  # ==================== INFRASTRUCTURE ====================
+  postgres:
+    image: postgres:16-alpine
+    container_name: tradeflow-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: tradeflow_identity,tradeflow_market,tradeflow_portfolio,tradeflow_social
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tradeflow-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tradeflow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tradeflow-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: tradeflow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - tradeflow-network
+
+  # ==================== MICROSERVICES ====================
+  identity-api:
+    build:
+      context: .
+      dockerfile: src/Services/Identity/TradeFlow.Identity.API/Dockerfile
+    container_name: tradeflow-identity
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__IdentityDb=Host=postgres;Port=5432;Database=tradeflow_identity;Username=postgres;Password=postgres
+      - Jwt__Secret=TradeFlowSuperSecretKey2024!@#$$%^&*()_+
+      - Jwt__Issuer=TradeFlow
+      - Jwt__Audience=TradeFlow
+      - RabbitMQ__Host=rabbitmq
+    ports:
+      - "5001:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tradeflow-network
+
+  market-api:
+    build:
+      context: .
+      dockerfile: src/Services/Market/TradeFlow.Market.API/Dockerfile
+    container_name: tradeflow-market
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MarketDb=Host=postgres;Port=5432;Database=tradeflow_market;Username=postgres;Password=postgres
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=TradeFlowSuperSecretKey2024!@#$$%^&*()_+
+      - Jwt__Issuer=TradeFlow
+      - Jwt__Audience=TradeFlow
+      - RabbitMQ__Host=rabbitmq
+      - Finnhub__ApiKey=demo
+    ports:
+      - "5002:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tradeflow-network
+
+  portfolio-api:
+    build:
+      context: .
+      dockerfile: src/Services/Portfolio/TradeFlow.Portfolio.API/Dockerfile
+    container_name: tradeflow-portfolio
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__PortfolioDb=Host=postgres;Port=5432;Database=tradeflow_portfolio;Username=postgres;Password=postgres
+      - Jwt__Secret=TradeFlowSuperSecretKey2024!@#$$%^&*()_+
+      - Jwt__Issuer=TradeFlow
+      - Jwt__Audience=TradeFlow
+      - RabbitMQ__Host=rabbitmq
+    ports:
+      - "5003:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tradeflow-network
+
+  social-api:
+    build:
+      context: .
+      dockerfile: src/Services/Social/TradeFlow.Social.API/Dockerfile
+    container_name: tradeflow-social
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__SocialDb=Host=postgres;Port=5432;Database=tradeflow_social;Username=postgres;Password=postgres
+      - Jwt__Secret=TradeFlowSuperSecretKey2024!@#$$%^&*()_+
+      - Jwt__Issuer=TradeFlow
+      - Jwt__Audience=TradeFlow
+      - RabbitMQ__Host=rabbitmq
+    ports:
+      - "5004:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tradeflow-network
+
+  # ==================== API GATEWAY ====================
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/TradeFlow.Gateway/Dockerfile
+    container_name: tradeflow-gateway
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Jwt__Secret=TradeFlowSuperSecretKey2024!@#$$%^&*()_+
+      - Jwt__Issuer=TradeFlow
+      - Jwt__Audience=TradeFlow
+    ports:
+      - "5000:80"
+    depends_on:
+      identity-api:
+        condition: service_healthy
+      market-api:
+        condition: service_healthy
+      portfolio-api:
+        condition: service_healthy
+      social-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - tradeflow-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  tradeflow-network:
+    driver: bridge

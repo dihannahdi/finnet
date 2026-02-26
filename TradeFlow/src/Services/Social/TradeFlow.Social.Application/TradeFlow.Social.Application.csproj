@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>TradeFlow.Social.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.Common\TradeFlow.Common.csproj" />
+    <ProjectReference Include="..\..\..\..\src\BuildingBlocks\TradeFlow.MessageContracts\TradeFlow.MessageContracts.csproj" />
+    <ProjectReference Include="..\TradeFlow.Social.Domain\TradeFlow.Social.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MassTransit.Abstractions" Version="8.2.5" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="FluentValidation" Version="11.9.2" />
+  </ItemGroup>
+</Project>

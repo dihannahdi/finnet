@@ -1,0 +1,112 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tradeflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmqctl status"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore TradeFlow/TradeFlow.sln
+
+      - name: Build
+        run: dotnet build TradeFlow/TradeFlow.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test TradeFlow/TradeFlow.sln --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        env:
+          ConnectionStrings__IdentityDb: "Host=localhost;Port=5432;Database=tradeflow_test;Username=postgres;Password=postgres"
+          ConnectionStrings__MarketDb: "Host=localhost;Port=5432;Database=tradeflow_test;Username=postgres;Password=postgres"
+          ConnectionStrings__PortfolioDb: "Host=localhost;Port=5432;Database=tradeflow_test;Username=postgres;Password=postgres"
+          ConnectionStrings__SocialDb: "Host=localhost;Port=5432;Database=tradeflow_test;Username=postgres;Password=postgres"
+          ConnectionStrings__Redis: "localhost:6379"
+          RabbitMQ__Host: "localhost"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: '**/TestResults/**'
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        service:
+          - { name: identity, dockerfile: src/Services/Identity/TradeFlow.Identity.API/Dockerfile }
+          - { name: market, dockerfile: src/Services/Market/TradeFlow.Market.API/Dockerfile }
+          - { name: portfolio, dockerfile: src/Services/Portfolio/TradeFlow.Portfolio.API/Dockerfile }
+          - { name: social, dockerfile: src/Services/Social/TradeFlow.Social.API/Dockerfile }
+          - { name: gateway, dockerfile: src/Gateway/TradeFlow.Gateway/Dockerfile }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./TradeFlow
+          file: ./TradeFlow/${{ matrix.service.dockerfile }}
+          push: false
+          tags: tradeflow-${{ matrix.service.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
