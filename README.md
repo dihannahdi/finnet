@@ -1,6 +1,6 @@
 # TradeFlow — Production-Grade Trading Portfolio Platform
 
-[![Build & Test](https://github.com/dihannahdi/finnet/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/dihannahdi/finnet/actions/workflows/ci-cd.yml)
+[![Build & Test](https://github.com/dihannahdi/finnet/actions/workflows/ci-cd.yml/badge.svg?branch=main)](https://github.com/dihannahdi/finnet/actions/workflows/ci-cd.yml)
 
 A **production-grade trading portfolio platform** built with **.NET 8 microservices**, designed for demo and showcase purposes. Features real-time market data, portfolio management, social trading, and a unified API gateway.
 
