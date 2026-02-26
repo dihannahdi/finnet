@@ -58,13 +58,13 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
-        run: dotnet restore TradeFlow/TradeFlow.sln
+        run: dotnet restore TradeFlow.sln
 
       - name: Build
-        run: dotnet build TradeFlow/TradeFlow.sln --configuration Release --no-restore
+        run: dotnet build TradeFlow.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test TradeFlow/TradeFlow.sln --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test TradeFlow.sln --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
         env:
           ConnectionStrings__IdentityDb: "Host=localhost;Port=5432;Database=tradeflow_test;Username=postgres;Password=postgres"
           ConnectionStrings__MarketDb: "Host=localhost;Port=5432;Database=tradeflow_test;Username=postgres;Password=postgres"
@@ -104,8 +104,8 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./TradeFlow
-          file: ./TradeFlow/${{ matrix.service.dockerfile }}
+          context: .
+          file: ./${{ matrix.service.dockerfile }}
           push: false
           tags: tradeflow-${{ matrix.service.name }}:latest
           cache-from: type=gha
